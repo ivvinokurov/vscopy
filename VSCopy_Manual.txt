@@ -1,0 +1,187 @@
+VSCopy 1.0
+Usage:
+1) Single operation
+   <command> <path-from> [<path-to>][<include pattern(s)>][parms]
+   Run single command
+
+   <command> - one of:
+
+	cp  - copy file/directory
+
+	cpx - copy file/directory in x-mode: SAF and packed files will be copied As-Is.
+
+	ls  - list SAF file content
+
+	cmd - execute system command
+
+	<path-from> 	- full patht to source file/directory/SAF-archive with optional pasword (required for encryption):
+		[password::]path 
+		If '*' is specified than the password will be prompter from console (chars are hidden);
+		If '?' is specified than the password will be prompter from console (chars are shown);
+		
+   <path_to> -	full patht to destination directory/SAF-archive name. The same rules as for 'pr' are applied.
+		If password is specified and '-s' key is not specified then 'vsec' extension will be added to the result file.
+
+   <include pattern[s]> - 'include' pattern for files and dir. Directory name must be preceeded by '$.
+				e.g incl:*.txt;*.doc;$Abc*
+
+   <parms>   
+	Replace mode (non-SAF destination only):
+		-all		overwrite all existing files.
+		-none		keep existing files, do not replace anything;
+		If none of above is specified then only newer files will be replaced.
+	
+	Destination mode ('cp' command only):
+		-m	    	mirror directories - delete all excessive files (and directories if recursive) from the destination directory.
+		-p	    	purge all content from the destination directory before copying;
+		-s	    	create Single Archive File ('vsaf' ext);
+
+
+	Other parameters:
+		-a	   	Apply source file(s)/dir(s) attributes to destination data.
+		-c[:pattern]  compress file content (applicable for both SAF and non-SAF modes).
+				Pattern can be specified for selective compression (similar to include pattern).
+				If no pattern is specified - all files will be compressed.
+				Both file and directory name pattern can be included.
+				If directory pattern matches directory name then all files ans subdirectories will be compressed recursively.
+		-crc	calculate CRC32 for destination data (applicable if '-c' is specified);
+		-e		copy empty directories (will be ignored othewise);
+		-even	continue processing if non-critical errors errors occured;
+		-r  	recursively scan and copy directories.
+		-sys	process system and hidden files (otherwise they are skipped);
+		-z		CP:copy empty files (will be ignored othewise); LS: include only files with zero length
+		-nl		do not create output file listing (error messages only);
+		-v[:nnn] -	split destination SAF files into volumes with nnnM size (2Gb if size is not specified);
+		-x:<pattern> 	'exclude' pattern for files and dir. Directory name must be preceeded by '$.
+				e.g incl:*.txt;*.doc;$Abc*
+		-r:<password> 	source data password (optional, required if encrypted);
+				If '*' is specified than the password will be prompter from console (chars are hidden);
+				If '?' is specified than the password will be prompter from console (chars are shown);
+		-w:<password>	target data password (optional, required if encrypted);
+				The same rules as for 'pr' are applied;
+		-chk	check SAF file CRC32 before read ('cd'/'ls' commands, source is SAF file)
+		-log:<log file name> file for output (optional). Cannot be specified in the script, command line only.
+				e.g. -log:c:\data\log1.txt
+		-l		include script listing.
+
+2) Commands and Parameters
+	Parameter	cp dir		cp file		ls
+	----------------------------------------
+	-a			x			x			-	
+	-all 		x			x			-
+	-c			x			x			-
+	-chk		x			-			x
+	-crc		x			x			-
+	-e			x			-			-
+	-even		x			x			x
+	-m			x			-			-
+	-nl			x			x			x
+	-none 		x			x			-
+	-p			x			-			-
+	-r	 		x			-			x
+	-s			x			-			-
+	-sys		x			x			-
+	-v			x			-			-
+	-x			x			-			x
+	-z			x			-			x
+
+
+	-pr		x	x	x
+	-pw		x	x	-
+
+3) Script operation
+   VSCopy run <path> [parms]
+   Run one or more commands from the script file
+   <path>    -	full patht to script file
+   <parms>   	
+	        -even - run all script lines if errors occured (rc=8). This parameter overrides command parameter.
+		-sp:<password> - will apply and override to all script commands, override if command parameter isspecified.
+		-ls - create source script output.
+
+4) Conditional script operators
+    if <condition> <command>
+	or
+    if <condition> 
+      [one or more commands]
+	condition - 'a[ny]', 'e[rror]' or 's[uccess]'
+	command   - command to execute if condition is true. Optional. I not specifie - 'end' command is expected.
+    end  - ends if/else command scope
+
+    else - alternative command/flow for 'if' command
+
+    else <command>
+	or
+    else 
+      [one or more commands]
+
+    stop - stop script (rc=8)
+    
+5) If/else preprocessor
+	
+	Convert to generic format - cases 1 and 3
+
+	1. if <condition>
+		<commands>
+	   end
+	2. if <condition> <command>
+	
+	
+	3. else
+		<commands>
+	   end
+	4. else <command>
+
+6) Script parametrization
+   The head line may contain:
+	PARM <name1>[<name2> [...]] 
+
+   In the scrip body parameter name is preceded by '&' char.
+   '.' char can be used to separate parameter name and other script text.
+   If '.' is required after the parameter name, it should be duplicated.
+
+   Examples (scripl lines):
+     cpd &path1 &path2
+     cpd &path1.\data\&filename..&fileext &path2
+
+   Example (parameters substitutionb):
+     Header:
+	parm path1 path2 fileext
+     Scrip source line:
+	cp &path1.\data\&filename..&fileext &path2
+     Command string with parms specified:
+	run myscript1.txp "c:\mydata" "e:\tmp" file1 txt
+     Script result line:
+	cpd c:\mydata\data\file1.txt e:\tmp
+
+7) Set condition script operator
+   set [condition]
+	condition - 'error' or 'success'
+
+8) Set error handling mode
+   Applicable to error code 8 only (ERROR)
+   on error [<condition>]
+	condition - 'stop' or 'continue'
+
+9) Return codes
+	4	-	warning, no action (execution) 
+	8	-	error during execution, ignored if '-even' parameter is specified. Otherwise command/script is terminated.
+	12	-	Invalid/missing/conflicting parameter/command (interpreter).
+	16	-	abnormal end during execution (critical error)
+	32	-	STOP command (script)
+
+10) Listing
+<Time> <Command> <Operation><Object type> [Object size] <[*]Object name>
+Where:
+	Operation:
+		'+' - added
+		'-' - deleted
+		'~' - skipped
+		'#' - replaced
+	Object type:
+		'F' - file
+		'D' - directory
+	Object size:
+		Fle size (not applicable for directory)
+	Object name:
+		'*' - compressed (file only)
+		'Object name' - file/directory name
